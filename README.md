@@ -2,13 +2,13 @@
 The efficient and transparent Windows proof-of-concept tool for heap-based bugs detection in x86 machine code.
 
 #Requirements
-WinHeap Explorer main module:
+WinHeap Explorer main module
  1. Intel pin-2.14-71313-msvc10-windows http://software.intel.com/sites/landingpage/pintool/downloads/pin-2.14-71313-msvc10-windows.zip
 
 IDAScripts
  1. IDA disassembler (6.8 or higher) + IDAPython.
  
-<h4>Usage:</h4>
+#Usage
 
 <pre>
 pin.exe -t winhe.dll -o results.txt -d sysdlls_ins_list -redzones_size 16 -- calc.exe
@@ -18,7 +18,6 @@ pin.exe -t winhe.dll -o results.txt -d sysdlls_ins_list -redzones_size 16 -- cal
 </pre>
 
 A list of insctructions to instrument may be obtained using the scripts in the IDAScript folder:
-<h4>Usage:</h4>
 <pre>
 sysdlls_parser.py [path to system dll]
 usedlls_parser.py -d 2 [path to user dll]
