@@ -14,7 +14,7 @@ IDAScripts
 pin.exe -t winhe.dll -o results.txt -d sysdlls_ins_list -redzones_size 16 -- calc.exe
 -d &lt;sysdlls_ins_list&gt; - file with a list of instructions in system or/and user dlls that should be instrumented.
 -o &lt;log_file&gt; - file to save results.
--redzones_size - size of redzones to check heap out of bound access.
+-redzones_size - size of redzones to check heap out of bound access (default 8).
 </pre>
 
 A list of instructions to instrument may be obtained using the scripts provided in the IDAScript folder:
