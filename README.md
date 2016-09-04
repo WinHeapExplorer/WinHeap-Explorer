@@ -17,9 +17,10 @@ pin.exe -t winhe.dll -o results.txt -d sysdlls_ins_list -redzones_size 16 -- cal
 -redzones_size - size of redzones to check heap out of bound access.
 </pre>
 
-A list of insctructions to instrument may be obtained using the scripts in the IDAScript folder:
+A list of instructions to instrument may be obtained using the scripts provided in the IDAScript folder:
 <pre>
 sysdlls_parser.py [path to system dll]
 usedlls_parser.py -d 2 [path to user dll]
 -d lt;depth_level&gt; - search depth level for potentially dangerous routines.
+Please take a look at config.conf file to configure the scripts.
 </pre>
