@@ -1,4 +1,4 @@
-BSD 2-Clause License
+/*BSD 2-Clause License
 
 Copyright (c) 2013-2015,
 All rights reserved.
@@ -23,8 +23,12 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
-/* TODO: description */
+/* An efficient and transparent Windows proof-of-concept tool for heap-based bugs detection in 
+ * x86 machine code.
+ */
+
 #define ITERATOR_DEBUG_LEVEL 0
 //#include <sparsehash/internal/sparseconfig.h>
 //#include <sparsehash/sparse_hash_map>
@@ -51,7 +55,6 @@ namespace WINDOWS
     #include <excpt.h>
 }
 #define noop ((void)0)
-/* TODO update description */
 KNOB<string> KnobDllCode(KNOB_MODE_WRITEONCE, "pintool",
     "d", "sysdlls_rtn_to_instrument.txt", "specify file with a list of libcalls and instructions in shared dlls that need to be instrumented");
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
