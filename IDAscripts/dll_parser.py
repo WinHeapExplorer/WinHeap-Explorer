@@ -1,3 +1,36 @@
+'''
+BSD 2-Clause License
+
+Copyright (c) 2013-2016,
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.s
+*/
+'''
+
+''' This script is used to perform system dlls parsing to get a list of potentially
+    dangerous library calls and their instructions
+'''
+
 import os
 import sys
 import idc
@@ -9,44 +42,61 @@ from time import strftime
 list_of_banned_functions = ["strcpy", "strcpyA", "strcpyW", "wcscpy", "_tcscpy",\
                         "_mbscpy", "StrCpy", "StrCpyA", "StrCpyW", "lstrcpy", "lstrcpyA",\
                         "lstrcpyW", "_tccpy", "_mbccpy", "_ftcscpy", "strncpy", "wcsncpy",\
-                        "_tcsncpy", "_mbsncpy", "_mbsnbcpy", "StrCpyN", "StrCpyNA", "StrCpyNW",\
-                        "StrNCpy", "strcpynA", "StrNCpyA", "StrNCpyW", "lstrcpyn", "lstrcpynA", "lstrcpynW"]
-list_of_banned_functions += ["strcat", "strcatA", "strcatW", "wcscat", "_tcscat", "_mbscat", "StrCat", "StrCatA",\
-                          "StrCatW", "lstrcat", "lstrcatA", "lstrcatW", "StrCatBuff", "StrCatBuffA", "StrCatBuffW",\
-                          "StrCatChainW", "_tccat", "_mbccat", "_ftcscat", "strncat", "wcsncat", "_tcsncat", "_mbsncat",\
-                          "_mbsnbcat", "StrCatN", "StrCatNA", "StrCatNW", "StrNCat", "StrNCatA", "StrNCatW", "lstrncat",\
-                          "lstrcatnA", "lstrcatnW", "lstrcatn"]
-list_of_banned_functions += ["sprintfW", "sprintfA", "wsprintf", "wsprintfW", "wsprintfA", "sprintf", "swprintf", "_stprintf",
-                            "wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", "_vstprintf", "vswprintf"]
-list_of_banned_functions += ["wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", "_vstprintf", "vswprintf"]
+                        "_tcsncpy", "_mbsncpy", "_mbsnbcpy", "StrCpyN", "StrCpyNA", \
+						"StrCpyNW", "StrNCpy", "strcpynA", "StrNCpyA", "StrNCpyW", \
+						"lstrcpyn", "lstrcpynA", "lstrcpynW"]
+list_of_banned_functions += ["strcat", "strcatA", "strcatW", "wcscat", "_tcscat", \
+                             "_mbscat", "StrCat", "StrCatA", "StrCatW", "lstrcat", \
+							 "lstrcatA", "lstrcatW", "StrCatBuff", "StrCatBuffA", \
+							 "StrCatBuffW", "StrCatChainW", "_tccat", "_mbccat", \
+							 "_ftcscat", "strncat", "wcsncat", "_tcsncat", "_mbsncat",\
+                             "_mbsnbcat", "StrCatN", "StrCatNA", "StrCatNW", "StrNCat", \
+							 "StrNCatA", "StrNCatW", "lstrncat", "lstrcatnA", \
+							 "lstrcatnW", "lstrcatn"]
+list_of_banned_functions += ["sprintfW", "sprintfA", "wsprintf", "wsprintfW", \
+                             "wsprintfA", "sprintf", "swprintf", "_stprintf", \
+                            "wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", \
+							"_vstprintf", "vswprintf"]
+list_of_banned_functions += ["wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", \
+                             "_vstprintf", "vswprintf"]
 list_of_banned_functions += ["_fstrncpy", " _fstrncat", "gets", "_getts", "_gettws"]
-list_of_banned_functions += ["IsBadWritePtr", "IsBadHugeWritePtr", "IsBadReadPtr", "IsBadHugeReadPtr", "IsBadCodePtr", "IsBadStringPtr"]
+list_of_banned_functions += ["IsBadWritePtr", "IsBadHugeWritePtr", "IsBadReadPtr", \
+                             "IsBadHugeReadPtr", "IsBadCodePtr", "IsBadStringPtr"]
 list_of_banned_functions += ["memcpy", "RtlCopyMemory", "CopyMemory", "wmemcpy"]
 
 ''' not recommended functions MSDN SDLC '''
-list_of_not_recommended_functions = ["scanf", "wscanf", "_tscanf", "sscanf", "swscanf", "_stscanf"]
-list_of_not_recommended_functions += ["wnsprintf", "wnsprintfA", "wnsprintfW", "_snwprintf", "snprintf", "sntprintf _vsnprintf", "vsnprintf",\
-                                      "_vsnwprintf", "_vsntprintf", "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
+list_of_not_recommended_functions = ["scanf", "wscanf", "_tscanf", "sscanf", "swscanf", \
+                                     "_stscanf"]
+list_of_not_recommended_functions += ["wnsprintf", "wnsprintfA", "wnsprintfW", \
+                                      "_snwprintf", "snprintf", "sntprintf _vsnprintf", \
+									  "vsnprintf", "_vsnwprintf", "_vsntprintf", \
+									  "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
 list_of_not_recommended_functions += ["_snwprintf", "_snprintf", "_sntprintf", "nsprintf"]
-list_of_not_recommended_functions += ["_vsnprintf", "_vsnwprintf", "_vsntprintf", "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
+list_of_not_recommended_functions += ["_vsnprintf", "_vsnwprintf", "_vsntprintf", \
+                                      "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
 list_of_not_recommended_functions += ["strtok", "_tcstok", "wcstok", "_mbstok"]
 list_of_not_recommended_functions += ["makepath", "_tmakepath", "_makepath", "_wmakepath"]
 list_of_not_recommended_functions += ["_splitpath", "_tsplitpath", "_wsplitpath"]
 list_of_not_recommended_functions += ["snscanf", "snwscanf", "_sntscanf"]
-list_of_not_recommended_functions += ["_itoa", "_itow", "_i64toa", "_i64tow", "_ui64toa", "_ui64tot", "_ui64tow", "_ultoa", "_ultot", "_ultow"]
-list_of_not_recommended_functions += ["CharToOem", "CharToOemA", "CharToOemW", "OemToChar", "OemToCharA", "OemToCharW", "CharToOemBuffA", "CharToOemBuffW"]
+list_of_not_recommended_functions += ["_itoa", "_itow", "_i64toa", "_i64tow", \
+                                      "_ui64toa", "_ui64tot", "_ui64tow", "_ultoa", \
+									  "_ultot", "_ultow"]
+list_of_not_recommended_functions += ["CharToOem", "CharToOemA", "CharToOemW", \
+                                      "OemToChar", "OemToCharA", "OemToCharW", \
+									  "CharToOemBuffA", "CharToOemBuffW"]
 list_of_not_recommended_functions += ["alloca", "_alloca"]
-list_of_not_recommended_functions += ["strlen", "wcslen", "_mbslen", "_mbstrlen", "StrLen", "lstrlen"]
+list_of_not_recommended_functions += ["strlen", "wcslen", "_mbslen", "_mbstrlen", \
+                                      "StrLen", "lstrlen"]
 list_of_not_recommended_functions += ["ChangeWindowMessageFilter"]
 
 WINHE_RESULTS_DIR = None
 
 def enumerate_function_chunks(f_start):
-    """
+    '''
     The function gets a list of chunks for the function.
     @f_start - first address of the function
     @return - list of chunks
-    """
+    '''
     # Enumerate all chunks in the function
     chunks = list()
     first_chunk = idc.FirstFuncFchunk(f_start)
@@ -59,6 +109,11 @@ def enumerate_function_chunks(f_start):
     return chunks
 
 def get_list_of_function_instr(addr):
+    '''
+	The function returns a list of instructions from a function
+	@addr - is function entry point
+	@return - list of instruction's addresses
+	'''
     f_start = addr
     f_end = idc.FindFuncEnd(addr)
     chunks = enumerate_function_chunks(f_start)
@@ -78,6 +133,10 @@ def get_list_of_function_instr(addr):
     return list_of_addr
 
 def enumerate_function_names():
+    '''
+	The function enumerates all functions in a dll.
+	@return - dictionary {function_name : list of corresponded instructions}
+	'''
     func_name = dict()
     for seg_ea in idautils.Segments():
         # For each of the functions
@@ -98,12 +157,15 @@ def enumerate_function_names():
     return func_name
 
 def search_dangerous_functions():
+    ''' The function searches for all potentially dangerous library calls in a module 
+	@ return - tuple<a list of instructions from a list of potentially dangerous libcalls,
+	                 a list of potentially dangerous libcalls found in a module
+	'''
     global list_of_banned_functions, list_of_not_recommended_functions
     ''' key - name, value - list of (instructions - module offset) '''
     func_names = dict()
     list_of_instrs = list()
     list_of_func_names = list()
-    
     
     func_names = enumerate_function_names()
     for banned_function in list_of_banned_functions:
@@ -131,6 +193,10 @@ def search_dangerous_functions():
     return list_of_instrs,list_of_func_names
 
 def get_unique(lists_of_instr):
+    ''' The function returns a list of unique instructions from the list of instructions
+	@list_of_instr - a list of instructions
+	@return a list of unique instructions
+	'''
     result_list = list()
     for list_of_instr in lists_of_instr:
         for instr in list_of_instr:
@@ -139,6 +205,11 @@ def get_unique(lists_of_instr):
     return result_list
 
 def save_results(lists_of_instr, list_of_func_names):
+    ''' The function saves results in a file
+	@list_of_instr - a list of instructions to save_results
+	@list_of_func_name - a list of functions names to save
+	
+	'''
     one_file = "sysdlls_instr_to_instrument.txt"
     analyzed_file = idc.GetInputFile()
     analyzed_file = analyzed_file.replace(".","_")
@@ -170,7 +241,9 @@ def main():
     idc.Wait() #wait while ida finish analysis
     DEPTH_LEVEL = os.getenv('DEPTH_LEVEL')
     auto_mode = 0
-    WINHE_RESULTS_DIR = os.getenv('WINHE_RESULTS_DIR')
+	# set WINHE_RESULTS_DIR variable in the cmd in case if you want to run IDA in the 
+	# silent mode.
+    WINHE_RESULTS_DIR = os.getenv('WINHE_RESULTS_DIR') 
     if WINHE_RESULTS_DIR == None:
         WINHE_RESULTS_DIR = os.getcwd()
     else:
