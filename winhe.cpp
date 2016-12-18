@@ -1,6 +1,6 @@
 /*BSD 2-Clause License
 
-Copyright (c) 2013-2015,
+Copyright (c) 2013-2016,
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -22,16 +22,15 @@ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
 SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.s
 */
 
-/* An efficient and transparent Windows proof-of-concept tool for heap-based bugs detection in 
- * x86 machine code.
+/* An efficient and transparent Windows proof-of-concept tool for heap-based 
+ * bugs detection in sx86 machine code.
  */
 
 #define ITERATOR_DEBUG_LEVEL 0
-//#include <sparsehash/internal/sparseconfig.h>
-//#include <sparsehash/sparse_hash_map>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -41,32 +40,33 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <unordered_set>
 #include "pin.H"
-
-//#define DEBUG 1
-//#define DEBUG_INSTR_RTN 1
-//#define PRINT_WARNINGS 1
-//#define PRINT_INSTRUCTIONS 1
-
-UINT32 redzone_size = 0x8;
-
 namespace WINDOWS
 {
     #include <Windows.h>
     #include <excpt.h>
 }
+
+/* The defines below are used to increase verbosity of printing output.
+ * #define PRINT_HEAP_MANAGEMENT 1
+ * #define PRINT_INSTR_RTN 1
+ * #define PRINT_WARNINGS 1
+ * #define PRINT_INSTRUCTIONS 1
+ * #define PRINT_STATISTICS 1
+*/
+
 #define noop ((void)0)
 KNOB<string> KnobDllCode(KNOB_MODE_WRITEONCE, "pintool",
-    "d", "sysdlls_rtn_to_instrument.txt", "specify file with a list of libcalls and instructions in shared dlls that need to be instrumented");
+    "d", "shared_dlls_to_instrument.txt", "specify a file with a list of libcalls \
+	      and instructions in shared dlls that need to be instrumented");
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool",
-    "o", "results.out", "specify output results file name");
+    "o", "results.out", "specify output file name");
 KNOB<BOOL> KnobNoDll(KNOB_MODE_WRITEONCE,  "pintool",
     "no_dll", "1", "do not instrument code in shared dlls");
 KNOB<UINT32> KnobRedZoneSize(KNOB_MODE_WRITEONCE,  "pintool",
     "redzone", "8", "redzones size");
 ofstream OutFile;
 
-/* Shadow memory test */
-
+/* Global variables for shadow memory */
 typedef WINDOWS::BYTE uint8_t;
 static const size_t kShadowRatioLog = 3;
 static const size_t kShadowRatio = (1 << kShadowRatioLog);
@@ -77,51 +77,49 @@ uint8_t kHeapAddressableMarker = 0x0;
 uint8_t kHeapFreedMarker = 0x8;
 uint8_t kHeapRedZoneRight = 0xf4;
 uint8_t kHeapRedZoneLeft = 0xf3;
-
-
 /* end */
-typedef unsigned char BYTE;
-#define DWORD_SIZE 0x4
-#define RED_ZONE_SIZE 0x4
-#define DO_NOT_REPORT_ONE_BYTE_OVERFLOW 0x1
-int instructions_instrumented = 0;
-PIN_LOCK lock;
 
-/* a map of heap blocks that was allocated by app
- * first value is an address of first byte in heap
- * second value is struct, where first element is heap last address
- * and third value is a bool flag indicated whether memory was allocated
- * or freed.
+/* common global variables */
+#define RED_ZONE_SIZE 0x4
+PIN_LOCK lock;
+/* end */
+
+/* A map of heap blocks that was allocated by app.
+ * @first value is an address of the first byte in a heap.
+ * @second value is a pointer to struct, where the first element is a
+ * heap last address or freed.
  */
 std::unordered_map<ADDRINT, ADDRINT> heap_blocks;
 /* additional hashmap to support HeapAlloc/malloc calls 
-   1 param addr where it was called
-   2 param is a size to allocate
+   @first value is an address of caller of HeapAlloc/malloc
+   @second value is a pair ?????
 */
 std::unordered_map<ADDRINT, std::pair<ADDRINT, int>> heap_alloc_in_process;
 /* a map of instructions that need to be instrumented */
 std::unordered_map<ADDRINT, bool> instr_to_instrument_addr_map;
 
-/* red zones in heap <RED_ZONE_SIZE> bytes before and after allocated memory
-   first value - address of byte in redzone
-   second value indicates whether red zone byte before (false) or after (true) 
-   allocated piece of heap 
+/* Red zones before and after heap.
+   @first value - address of a redzone.
+   @second value indicates whether red zone byte before (false) or after (true) 
+   allocated piece of heap.
 */
 std::unordered_map<ADDRINT, bool> heap_red_zones; 
 
-/* hash map of shared dlls instructions that should be instrumented */
+/* A map of instructions in shared dlls that should be instrumented */
 std::unordered_map<std::string, std::unordered_set<ADDRINT>> dlls_ins_to_instr_addr_map;
 
+/* A map of image bases for each loaded module */
 std::unordered_map<std::string, ADDRINT> dlls_image_bases;
 
-bool dont_report_one_byte_overflow = false;
-bool dont_report_two_bytes_overflows = false;
-UINT32 size_of_freed_heap = 0;
+
+#ifdef PRINT_STATISTICS
+    long long int malloc_count = 0;
+    int instructions_instrumented = 0;
+#endif
 
 bool IsRedzone(uint8_t marker) {
     return (marker & kRedzoneBit) == kRedzoneBit;
 }
-long long int malloc_count = 0;
 
 bool IsAccessible(const void* addr, UINT32 instr_addr, bool is_write) {
   uintptr_t index = reinterpret_cast<uintptr_t>(addr);
@@ -134,44 +132,58 @@ bool IsAccessible(const void* addr, UINT32 instr_addr, bool is_write) {
   uint8_t shadow = shadow_memory[index];
   if (shadow == 0)
     return true;
+
+#ifdef PRINT_STATISTICS
   malloc_count++;
+#endif
+
   if (IsRedzone(shadow)) {
     if (shadow == 0xf3) {
 	  if (is_write)
-        OutFile << "[heap underflow] accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+        OutFile << "[heap underflow] accessing 0x" << hex << addr 
+                << " at 0x" << hex << instr_addr << endl;
 	  else
-        OutFile << "[heap underrun] accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+        OutFile << "[heap underrun] accessing 0x" << hex << addr 
+                << " at 0x" << hex << instr_addr << endl;
 	} else if (shadow == 0xf4) {
 	  if (is_write)
-        OutFile << "[heap overflow] accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+        OutFile << "[heap overflow] accessing 0x" << hex << addr 
+                << " at 0x" << hex << instr_addr << endl;
 	  else
-        OutFile << "[heap overrun] accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+        OutFile << "[heap overrun] accessing 0x" << hex << addr 
+                << " at 0x" << hex << instr_addr << endl;
 	} else {
-      OutFile << "heap out of bound, accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+      OutFile << "[heap out of bound access], accessing 0x" << hex << addr 
+              << " at 0x" << hex << instr_addr << endl;
 	}
     return false;
   }
 
   if (shadow & kHeapFreedMarker) {
     if (shadow == kHeapFreedMarker)
-     OutFile << "[use after free], accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+     OutFile << "[use after free], accessing 0x" << hex << addr 
+             << " at 0x" << hex << instr_addr << endl;
     else if (start < (kHeapFreedMarker ^ shadow))
-     OutFile << "[use after free] accessing 0x" << hex << addr << " at 0x" << hex << instr_addr << endl;
+     OutFile << "[use after free] accessing 0x" << hex << addr 
+             << " at 0x" << hex << instr_addr << endl;
     else
      return true;
   }
 
   if (start >= shadow) {
 	if (is_write)
-      OutFile << "[heap overflow] accessing 0x" << addr << " at 0x" << hex << instr_addr << endl;
+      OutFile << "[heap overflow] accessing 0x" << addr << " at 0x" 
+              << hex << instr_addr << endl;
 	else
-      OutFile << "[heap overrun] accessing 0x" << addr << " at 0x" << hex << instr_addr << endl;
+      OutFile << "[heap overrun] accessing 0x" << addr << " at 0x" 
+              << hex << instr_addr << endl;
   }
 
   return start < shadow;
 }
 
-void IsAddressRangeAcessible(const void* addr, size_t access_size, UINT32 instr_addr, bool is_write) {
+void IsAddressRangeAcessible(const void* addr, size_t access_size, 
+                             UINT32 instr_addr, bool is_write) {
   uintptr_t index = reinterpret_cast<uintptr_t>(addr);
   for (size_t i = 0; i < access_size; i++) {
     IsAccessible((void *)(index + i), instr_addr, is_write);
@@ -276,58 +288,80 @@ void check_access(UINT32 addr, UINT32 instr_addr, UINT32 access_size, bool is_wr
 VOID WriteMem(UINT32 insAddr, UINT32 memOp, UINT32 memWriteSize, THREADID threadid)
 {
   PIN_GetLock(&lock, threadid+1);
+
+#ifdef PRINT_STATISTICS
   instructions_instrumented += 1;
-  UINT32 addr = memOp;
-#ifdef PRINT_INSTRUCTIONS
-  OutFile << "Instrumented instr Write addr " << hex << insAddr << " to " << hex << memOp << " size is " << memWriteSize << endl;
 #endif
-  check_access(addr, insAddr, memWriteSize, true);
+
+#ifdef PRINT_INSTRUCTIONS
+  OutFile << "Instrumented instruction (type write) address is " 
+          << hex << insAddr << " to " << hex << memOp << " size is " 
+          << memWriteSize << endl;
+#endif
+
+  check_access(memOp, insAddr, memWriteSize, true);
   PIN_ReleaseLock(&lock);
 }
 
 VOID ReadMem(UINT32 insAddr, UINT32 memOp, UINT32 memReadSize, THREADID threadid) {
   PIN_GetLock(&lock, threadid+1);
+
+#ifdef PRINT_STATISTICS
   instructions_instrumented += 1;
-#ifdef PRINT_INSTRUCTIONS
-  OutFile << "Instrumented instr Read addr " << hex << memOp << "at " << hex << insAddr << endl;
 #endif
+
+#ifdef PRINT_INSTRUCTIONS
+  OutFile << "Instrumented instruction (type read) address is " 
+          << hex << memOp << "at " << hex << insAddr << endl;
+#endif
+
   check_access(memOp, insAddr, memReadSize, false);
   PIN_ReleaseLock(&lock);
 }
 
 void print_hashmaps() {
-    for (auto element = instr_to_instrument_addr_map.begin(); element != instr_to_instrument_addr_map.end(); ++element)
-        OutFile << "Instruction need to be instrumented " << hex << element->first << endl;
-    for (auto element = dlls_ins_to_instr_addr_map.begin(); element != dlls_ins_to_instr_addr_map.end(); ++element)
-        OutFile << "Instruction need to be instrumented in shared lib " << hex << element->first << endl;
+    for (auto element = instr_to_instrument_addr_map.begin(); 
+         element != instr_to_instrument_addr_map.end(); ++element)
+        OutFile << "Instructions count need to be instrumented " 
+                << hex << element->first << endl;
+    for (auto element = dlls_ins_to_instr_addr_map.begin();
+         element != dlls_ins_to_instr_addr_map.end(); ++element)
+        OutFile << "Instructions count need to be instrumented in the shared lib " 
+                << hex << element->first << endl;
 }
 
 VOID Fini(INT32 code, VOID *v)
 {
     OutFile << "-----------------------"<<endl;
-    for (auto element = dlls_image_bases.begin(); element != dlls_image_bases.end(); ++element)
+    for (auto element = dlls_image_bases.begin(); 
+         element != dlls_image_bases.end(); ++element)
         OutFile << element->first << " base:" << hex << element->second << endl;
-
+#ifdef PRINT_STATISTICS
     OutFile << "instructions instrumented " << hex << instructions_instrumented << endl;
 	OutFile << "heap access count " << dec << malloc_count << endl;
+#endif
     OutFile.close();
 }
 
-VOID before_alloc(ADDRINT arg1, ADDRINT pHeapSize, ADDRINT retIP,  bool is_HeapAlloc, ADDRINT flags, THREADID threadid) {
+VOID before_alloc(ADDRINT arg1, ADDRINT pHeapSize, ADDRINT retIP,  bool is_HeapAlloc,
+                  ADDRINT flags, THREADID threadid) {
     PIN_GetLock(&lock, threadid+1);
     std::pair<ADDRINT, int> container (arg1, flags);
     heap_alloc_in_process[retIP] = container;
-#ifdef DEBUG
+#ifdef PRINT_HEAP_MANAGEMENT
     if (is_HeapAlloc)
-        OutFile << "HeapAlloc called at " << hex << retIP << " param is " << arg1 << " flags are " << flags << endl;
+        OutFile << "HeapAlloc called at " << hex << retIP 
+                << " 1 param is " << arg1 << " flags are " << flags << endl;
     else
-        OutFile << "maloc called at " << hex << retIP << " param is " << arg1 << " flags are " << flags << endl;
+        OutFile << "maloc called at " << hex << retIP << " 1 param is " << arg1 
+                << " flags are " << flags << endl;
 #endif
     PIN_ReleaseLock(&lock);
 }
 
-VOID after_alloc(ADDRINT ret, ADDRINT pRetValue, ADDRINT rtn_addr, ADDRINT retIP, bool is_HeapAlloc, THREADID threadid) {
-    // TODO: Handle return codes
+VOID after_alloc(ADDRINT ret, ADDRINT pRetValue, ADDRINT rtn_addr, ADDRINT retIP,
+                 bool is_HeapAlloc, THREADID threadid) {
+    /* i#1: Handle return codes. Some libcalls may fail which is a good place for FP */
     PIN_GetLock(&lock, threadid+1);
     unsigned int size_to_allocate = 0;
     auto element = heap_alloc_in_process.find(retIP);
@@ -335,6 +369,9 @@ VOID after_alloc(ADDRINT ret, ADDRINT pRetValue, ADDRINT rtn_addr, ADDRINT retIP
         size_to_allocate = element->second.first;
         heap_alloc_in_process.erase(element);
         if (element->second.second == 0x800000) {
+            /* i#2 we don't know how to correctly support this flag,
+             * let's ignore it for a while.
+             */
             PIN_ReleaseLock(&lock);
             return;
         }
@@ -348,10 +385,12 @@ VOID after_alloc(ADDRINT ret, ADDRINT pRetValue, ADDRINT rtn_addr, ADDRINT retIP
 
   if (size_to_allocate != 0 && size_to_allocate != 0xffffffff) {
      int heap_start = ret;
-#ifdef DEBUG
-     OutFile << "[INFO] HeapAlloc(" << size_to_allocate << ") = " << std::hex << ret << " at " << hex << retIP << std::endl;
+#ifdef PRINT_HEAP_MANAGEMENT
+     OutFile << "[INFO] HeapAlloc(" << size_to_allocate << ") = " 
+             << std::hex << ret << " at " << hex << retIP << std::endl;
      OutFile << "HeapAlloc boundaries is [" << hex << heap_start << ";" 
-             << heap_start+size_to_allocate << "] at " << hex << retIP << " (" << hex << rtn_addr << ")" << endl;
+             << heap_start+size_to_allocate << "] at " 
+             << hex << retIP << " (" << hex << rtn_addr << ")" << endl;
 #endif
      SetupBlock((void *)heap_start, size_to_allocate);
      heap_blocks[heap_start] = size_to_allocate;
@@ -362,10 +401,12 @@ VOID after_alloc(ADDRINT ret, ADDRINT pRetValue, ADDRINT rtn_addr, ADDRINT retIP
 }
 
 int realloc_after_counter = 0;
-VOID Before_HeapReAlloc(ADDRINT pMem, ADDRINT size, ADDRINT pSize, ADDRINT rtn_addr, ADDRINT retIP, THREADID threadid) {
-    /*TODO the same like in alloc */
-#ifdef DEBUG
-    OutFile << "HeapReAlloc called to realloc addr" << hex << pMem << ", size =  " << hex << size << endl;
+VOID Before_HeapReAlloc(ADDRINT pMem, ADDRINT size, ADDRINT pSize, ADDRINT rtn_addr,
+                        ADDRINT retIP, THREADID threadid) {
+    /*i#3 we have to do refactoring for this function to be same as before_alloc */
+#ifdef PRINT_HEAP_MANAGEMENT
+    OutFile << "HeapReAlloc called to realloc addr" << hex << pMem << ", size =  " 
+            << hex << size << endl;
 #endif
     PIN_GetLock(&lock, threadid+1);
     if (size == 0xffffffff) {
@@ -382,6 +423,7 @@ VOID Before_HeapReAlloc(ADDRINT pMem, ADDRINT size, ADDRINT pSize, ADDRINT rtn_a
 }
 
 VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID threadid) {
+    /*i#3 we have to do refactoring for this function to be same as after_alloc */
     PIN_GetLock(&lock, threadid+1);
     auto element = heap_alloc_in_process.find(retIP);
     unsigned int size_to_allocate = 0;
@@ -389,6 +431,9 @@ VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID th
         size_to_allocate = element->second.first;
         heap_alloc_in_process.erase(element);
         if (element->second.second == 0x800000) {
+            /* i#2 we don't know how to correctly support this flag,
+             * let's ignore it for a while.
+             */
             PIN_ReleaseLock(&lock);
             return;
         }
@@ -405,8 +450,10 @@ VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID th
         return;
     }
     if (size_to_allocate != -1) {
-        if (ret == 0) { 
+        if (ret == 0) {
+#ifdef PRINT_WARNINGS
             OutFile << "HeapReAlloc failed " << endl;
+#endif
             size_to_allocate = -1;
             PIN_ReleaseLock(&lock);
             return;
@@ -416,14 +463,15 @@ VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID th
         if (element != heap_blocks.end()) {
             /* remove redzone after */
             for (int i = 1; i < RED_ZONE_SIZE + 1; i++) {
-#ifdef DEBUG
+#ifdef PRINT_HEAP_MANAGEMENT
                 OutFile << "remove redzone after " << hex << element->second + i << endl;
 #endif
                 /* remove old redzones, setup new redzones */
                 auto element2 = heap_red_zones.find(element->second + i);
                 if (element2 == heap_red_zones.end()) {
 #ifdef PRINT_WARNINGS
-                    OutFile << "[WARNING] failed to find redzone for " << hex << element->second + i << endl;
+                    OutFile << "[WARNING] failed to find redzone for " 
+                            << hex << element->second + i << endl;
 #endif
                     continue;
                 }
@@ -433,7 +481,8 @@ VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID th
             element->second = element->first + size_to_allocate - 1;
         } else {
 #ifdef PRINT_WARNINGS
-            OutFile << "[WARNING] HeapReAlloc allocates new block, but we failed to find previous !" << endl;
+            OutFile << "[WARNING] HeapReAlloc allocates new \
+                       block, but we failed to find previous !" << endl;
 #endif
         }
     }
@@ -441,11 +490,13 @@ VOID After_HeapReAlloc(ADDRINT ret, ADDRINT rtn_addr, ADDRINT retIP, THREADID th
 }
 
 int heaps_instrumented = 0;
-VOID before_free(ADDRINT heap_base, ADDRINT flags, ADDRINT pHeapHandle, ADDRINT heap_handle, ADDRINT retIP, bool is_heapfree, THREADID threadid) {
-    /* TODO: the same as for alloc */
+VOID before_free(ADDRINT heap_base, ADDRINT flags, ADDRINT pHeapHandle,
+                 ADDRINT heap_handle, ADDRINT retIP, bool is_heapfree, THREADID threadid) {
+    /* i#4: we have to to do before free in the same way as we do in heap_alloc */
     PIN_GetLock(&lock, threadid+1);
-#ifdef DEBUG
-    OutFile << "Trying to RtlFreeHeap " << hex << heap_handle << "at " << hex << pHeapHandle << endl;
+#ifdef PRINT_HEAP_MANAGEMENT
+    OutFile << "Trying to RtlFreeHeap " 
+            << hex << heap_handle << "at " << hex << pHeapHandle << endl;
 #endif
     if (heap_handle == 0) {
 #ifdef PRINT_WARNINGS
@@ -454,7 +505,7 @@ VOID before_free(ADDRINT heap_base, ADDRINT flags, ADDRINT pHeapHandle, ADDRINT 
         PIN_ReleaseLock(&lock);
         return;
     }
-#ifdef DEBUG
+#ifdef PRINT_HEAP_MANAGEMENT
     OutFile << "[INFO]HeapFree(" << hex << heap_handle << ") at " << std::hex
             << retIP - 0x6 << std::endl;
 #endif
@@ -463,7 +514,7 @@ VOID before_free(ADDRINT heap_base, ADDRINT flags, ADDRINT pHeapHandle, ADDRINT 
         FreeBlock((void *)heap_handle, element->second);
         heap_blocks.erase(element);
     }
-#ifdef DEBUG
+#ifdef PRINT_HEAP_MANAGEMENT
     else
         OutFile << "failed to find heap handle = " << heap_handle << endl;
 #endif
@@ -484,19 +535,18 @@ VOID Routine(RTN rtn, VOID *v)
       return;
     
 	bool main_module = IMG_IsMainExecutable(img);
-	bool system_dll = false; /* TODO for system dlls we can do manual parsing */
-    //if(KnobNoDll.Value() && !IMG_IsMainExecutable(img))
-      //  return;
 	auto element = dlls_ins_to_instr_addr_map.find(module_name);
 	std::unordered_set<ADDRINT> set_of_addrs;
     if (element == dlls_ins_to_instr_addr_map.end() && !main_module) {
 		return;
-	} //else
-		//OutFile << "will be parsed" << module_name << endl;
+	}
+
 	if (!main_module)
 		set_of_addrs = element->second;
 	if(!RTN_Valid(rtn)) {
-		OutFile << "invalid rtn" << endl;
+#ifdef PRINT_WARNINGS
+		OutFile << "invalid rtn, ignore, module: " << module_name << endl;
+#endif
 		return;
 	}
 
@@ -508,12 +558,13 @@ VOID Routine(RTN rtn, VOID *v)
 			auto value = set_of_addrs.find(addr);
 			if (value == set_of_addrs.end())
 				continue;
-#ifdef DEBUG_INSTR_RTN
+#ifdef PRINT_INSTR_RTN
 			else
 				OutFile << "Manually will be instrumented " << addr << endl;
 #endif
 		}
-         if (INS_OperandCount(ins) > 1 && INS_MemoryOperandIsRead(ins, 0) && INS_OperandIsReg(ins, 0)){
+         if (INS_OperandCount(ins) > 1 && INS_MemoryOperandIsRead(ins, 0) 
+             && INS_OperandIsReg(ins, 0)){
             INS_InsertCall(
             ins, IPOINT_BEFORE, (AFUNPTR)ReadMem,
             IARG_ADDRINT, INS_Address(ins),
@@ -535,63 +586,6 @@ VOID Routine(RTN rtn, VOID *v)
     RTN_Close(rtn);
 }
 
-/*
- * Instrumentation routines
- */
-VOID InstrumentManually(IMG img, std::string module_name, ADDRINT img_base) {
-    PIN_LockClient();
-    std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::tolower);
-    /* check whether the instructions in the module should be instrumented or not  */
-	OutFile << "instrumenting " << module_name << endl;
-	auto element = dlls_ins_to_instr_addr_map.find(module_name);
-    if (element != dlls_ins_to_instr_addr_map.end())  {
-		std::unordered_set<ADDRINT> instrs_set = element->second;
-		for (std::unordered_set<ADDRINT>::iterator it = instrs_set.begin(); it != instrs_set.end(); ++it) {
-			RTN rtn = RTN_FindByAddress(*it + img_base);
-			if (rtn == RTN_Invalid()) {
-//#ifdef DEBUG_INSTR_RTN
-				OutFile << "skipped: " << *it + img_base << endl;
-//#endif
-				continue;
-			}
-			RTN_Open(rtn);
-			OutFile << "New routine at : " << *it + img_base << endl;
-			OutFile << dec << RTN_NumIns(rtn) << endl;
-			// Examine each instruction in the routine.
-			for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)) {
-				if (INS_OperandCount(ins) > 1 && INS_MemoryOperandIsRead(ins, 0) && INS_OperandIsReg(ins, 0)) {
-#ifdef DEBUG_INSTR_RTN
-					OutFile << "(read)Manually instrumented " << module_name << " at 0x" << hex << INS_Address(ins) << endl;
-#endif
-					INS_InsertCall(
-					ins, IPOINT_BEFORE, (AFUNPTR)ReadMem,
-					IARG_ADDRINT, INS_Address(ins),
-					IARG_MEMORYOP_EA, 0,
-					IARG_ADDRINT, INS_MemoryReadSize(ins),
-					IARG_THREAD_ID,
-					IARG_END);
-				} else if (INS_OperandCount(ins) > 1 && INS_MemoryOperandIsWritten(ins, 0)) {
-#ifdef DEBUG_INSTR_RTN
-					OutFile << "(write)Manually instrumented " << module_name << " at 0x" << hex << INS_Address(ins) << endl;
-#endif
-				INS_InsertCall(
-					ins, IPOINT_BEFORE, (AFUNPTR)WriteMem,
-					IARG_ADDRINT, INS_Address(ins),
-					IARG_MEMORYOP_EA, 0,
-					IARG_ADDRINT, INS_MemoryWriteSize(ins),
-					IARG_THREAD_ID,
-					IARG_END);
-				}
-			}
-			// Close the RTN.
-			RTN_Close(rtn);
-		}
-		//dlls_ins_to_instr_addr_map.erase(element);
-	}
-	OutFile << "done" << endl;
-    PIN_UnlockClient();
-}
-
 VOID Image(IMG img, VOID *v)
 {  
     string module_name = IMG_Name(img);
@@ -600,15 +594,14 @@ VOID Image(IMG img, VOID *v)
     auto element = dlls_image_bases.find(module_name);
     if (element == dlls_image_bases.end())
         dlls_image_bases[module_name] = img_base;
-    
-    //if(KnobNoDll.Value() == 1)
-        //InstrumentManually(img, module_name, img_base);
+ 
     PIN_InitSymbols();
     /* instrument HeapAlloc */
     RTN allocRtn3 = RTN_FindByName(img, "RtlAllocateHeap");
     if (RTN_Valid(allocRtn3)) {
-        OutFile << "Found RtlAllocateHeap at: " << std::hex << RTN_Address(allocRtn3) << endl;
-        // Instrument to print the input argument value and the return value.
+        OutFile << "Found RtlAllocateHeap at: " 
+                << std::hex << RTN_Address(allocRtn3) << endl;
+        /* Instrument to print the input argument value and the return value. */
         RTN_Open(allocRtn3);
         RTN_InsertCall(allocRtn3, IPOINT_BEFORE, (AFUNPTR)before_alloc,
                         IARG_FUNCARG_CALLSITE_VALUE, 3,
@@ -629,12 +622,12 @@ VOID Image(IMG img, VOID *v)
         RTN_Close(allocRtn3);
     }
     
-    // instrument HeapReAlloc
-    /*
+    /* instrument HeapReAlloc */
     RTN allocRtn4 = RTN_FindByName(img, "RtlReAllocateHeap");
     if (RTN_Valid(allocRtn4)) {
-        OutFile << "Found RtlReAllocateHeap at: " << std::hex << RTN_Address(allocRtn4) << endl;
-        // Instrument to print the input argument value and the return value.
+        OutFile << "Found RtlReAllocateHeap at: " 
+                << std::hex << RTN_Address(allocRtn4) << endl;
+        /* Instrument to print the input argument value and the return value. */
         RTN_Open(allocRtn4);
         RTN_InsertCall(allocRtn4, IPOINT_BEFORE, (AFUNPTR)Before_HeapReAlloc,
                         IARG_FUNCARG_CALLSITE_VALUE, 3,
@@ -643,20 +636,21 @@ VOID Image(IMG img, VOID *v)
                         IARG_ADDRINT, RTN_Address(allocRtn4),
                         IARG_RETURN_IP,
                         IARG_THREAD_ID,
-                        IARG_END); // to check size 
+                        IARG_END); /* to check size */
         RTN_InsertCall(allocRtn4, IPOINT_AFTER, (AFUNPTR)After_HeapReAlloc,
                         IARG_FUNCRET_EXITPOINT_VALUE,
                         IARG_ADDRINT, RTN_Address(allocRtn4),
                         IARG_RETURN_IP,
                         IARG_THREAD_ID,
-                        IARG_END);  // to check returned value
+                        IARG_END);  /* to check returned value*/
         RTN_Close(allocRtn4);
-    }*/
+    }
     
     RTN freeRtn3 = RTN_FindByName(img, "RtlFreeHeap");
     if (RTN_Valid(freeRtn3))
     {
-        OutFile << "Found RtlFreeHeap at: " << std::hex << RTN_Address(freeRtn3) << endl;
+        OutFile << "Found RtlFreeHeap at: " 
+                << std::hex << RTN_Address(freeRtn3) << endl;
         RTN_Open(freeRtn3);
         RTN_InsertCall(freeRtn3, IPOINT_BEFORE, (AFUNPTR)before_free,
                       IARG_FUNCARG_CALLSITE_VALUE, 1,
@@ -676,7 +670,6 @@ bool fromDllCodeToArray (const std::string & fileName) {
   string line;
   std::string lib_name;
   std::stringstream ss;
-  bool flag = false;
   std::ifstream InputFile(fileName.c_str(), ios::in);
   if (!InputFile.is_open())
      return false;
@@ -690,7 +683,8 @@ bool fromDllCodeToArray (const std::string & fileName) {
      ss.clear();
   }
   InputFile.close();
-  OutFile << "# of manually instrumented instructions = " << dlls_ins_to_instr_addr_map.size() << endl;
+  OutFile << "# of manually instrumented instructions = " 
+          << dlls_ins_to_instr_addr_map.size() << endl;
 
   return true;
 }
@@ -702,18 +696,24 @@ int main(int argc, char *argv[])
     }
     PIN_InitLock(&lock);
     OutFile.open(KnobOutputFile.Value().c_str());
-    shadow_memory = (WINDOWS::BYTE *)WINDOWS::VirtualAlloc(NULL, length, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+    shadow_memory = (WINDOWS::BYTE *)WINDOWS::VirtualAlloc(NULL, length, 
+                                                           MEM_COMMIT|MEM_RESERVE, 
+                                                           PAGE_READWRITE);
     if (shadow_memory) {
-        OutFile << "Sucessfully initialized shadow memory at " << &shadow_memory << endl;
+        OutFile << "Sucessfully initialized shadow memory at " 
+                << &shadow_memory << endl;
     } else {
-        OutFile << "failed to initialize shadow memory, stopping" << endl;
+        OutFile << "failed to initialize shadow memory, stopping, last error is 0x" 
+                << hex << WINDOWS::GetLastError() << endl;
         return 0;
     }
-    //print_hashmaps();
-	std::string dlls_to_inst = KnobDllCode.Value().c_str();
+    
+    /*print_hashmaps();*/
+	
+    std::string dlls_to_inst = KnobDllCode.Value().c_str();
 	if (!dlls_to_inst.empty()) {
 		if (!fromDllCodeToArray(dlls_to_inst.c_str())) {
-			printf("failed to open sysdlls_rtn_to_instrument.txt");
+			printf("failed to open %s, stopping", dlls_to_inst.c_str());
 			return -1;
 		}
 	}
