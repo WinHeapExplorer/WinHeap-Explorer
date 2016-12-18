@@ -24,3 +24,4 @@ usedlls_parser.py -d 2 [path to user dll]
 -d &lt;depth_level&gt; - search depth level for potentially dangerous routines.
 Please take a look at config.conf file to configure the scripts.
 </pre>
+NOTE: The IDAScripts is possible to use directly from IDAPro without wrappers specified above.
