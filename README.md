@@ -1,5 +1,5 @@
 # WinHeap-Explorer
-The efficient and transparent Windows proof-of-concept tool for heap-based bugs detection in x86 machine code.
+The efficient and transparent proof-of-concept tool for heap-based bugs detection in x86 machine code for Windows applications.
 
 #Requirements
 WinHeap Explorer main module
@@ -21,6 +21,6 @@ A list of instructions to instrument may be obtained using the scripts provided 
 <pre>
 sysdlls_parser.py [path to system dll]
 usedlls_parser.py -d 2 [path to user dll]
--d lt;depth_level&gt; - search depth level for potentially dangerous routines.
+-d &lt;depth_level&gt; - search depth level for potentially dangerous routines.
 Please take a look at config.conf file to configure the scripts.
 </pre>

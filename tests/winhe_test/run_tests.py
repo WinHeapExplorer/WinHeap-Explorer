@@ -32,7 +32,11 @@ import sys
 import subprocess
 
 
+<<<<<<< HEAD
 #i5: we need to implement some robust approach for heap_overflow_shareddll_loader test.
+=======
+# i#5: we need to implement some robust approach for heap_overflow_shareddll_loader test.
+>>>>>>> b62b6eae266de0ed450fb38e851f710d51f3e6de
 # Now it depends on addresses in sysdlls_rtn_to_instrument_test.txt and fails
 # on different machines.
 run_winhe_command = "pin.exe -t winhe.dll -d sysdlls_rtn_to_instrument_test.txt  "
