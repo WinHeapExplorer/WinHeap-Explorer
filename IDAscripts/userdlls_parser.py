@@ -51,7 +51,7 @@ def print_error():
     print ""
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
        print "Please specify path to dll to start analysis"
        print "Usage: userdlls_parser.py -d [depth_level] [path_to_dll]"
        return 0
