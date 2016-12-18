@@ -1,5 +1,5 @@
 # WinHeap-Explorer
-The efficient and transparent Windows proof-of-concept tool for heap-based bugs detection in x86 machine code.
+The efficient and transparent proof-of-concept tool for heap-based bugs detection in x86 machine code for Windows applications.
 
 #Requirements
 WinHeap Explorer main module
