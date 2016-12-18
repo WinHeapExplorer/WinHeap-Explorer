@@ -45,7 +45,7 @@ def parse_config():
             path_to_script = line[1].replace("\n", "")
         if "RESULTS_PATH" in line:
             line = line.split("=")
-            path_to_results = line[1].replace("\n", "")                   
+            path_to_results = line[1].replace("\n", "")
     return path_to_ida, path_to_script, path_to_results
 def print_error():
     print ""
@@ -61,15 +61,15 @@ def main():
     os.system('set WINHE_RESULTS_DIR=' + path_to_results)
     print path_to_results
     #exec_line = '"C:\Program Files (x86)\IDA 6.8\idaq.exe" -A \
-	#              -OIDAPython:C:\\IDAMetrics\\IDAmetrics\\dll_parser_user.py ' + dll_path
+    #              -OIDAPython:C:\\IDAMetrics\\IDAmetrics\\dll_parser_user.py ' + dll_path
     exec_line = '"' + path_to_ida + '" -A -OIDAPython:' + path_to_script + \
-	             "\\dll_parser.py " + dll_path
+                 "\\dll_parser.py " + dll_path
     print exec_line
     try:
         os.system(exec_line)
     except:
         print "failed to start analysis, please make sure that you have IDA installed"
-    
+
 
 if __name__ == "__main__":
     main()

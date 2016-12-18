@@ -44,20 +44,20 @@ list_of_banned_functions = ["strcpy", "strcpyA", "strcpyW", "wcscpy", "_tcscpy",
                         "_mbscpy", "StrCpy", "StrCpyA", "StrCpyW", "lstrcpy", "lstrcpyA",\
                         "lstrcpyW", "_tccpy", "_mbccpy", "_ftcscpy", "strncpy", "wcsncpy",\
                         "_tcsncpy", "_mbsncpy", "_mbsnbcpy", "StrCpyN", "StrCpyNA", \
-						"StrCpyNW", "StrNCpy", "strcpynA", "StrNCpyA", "StrNCpyW", \
-						"lstrcpyn", "lstrcpynA", "lstrcpynW"]
+                        "StrCpyNW", "StrNCpy", "strcpynA", "StrNCpyA", "StrNCpyW", \
+                        "lstrcpyn", "lstrcpynA", "lstrcpynW"]
 list_of_banned_functions += ["strcat", "strcatA", "strcatW", "wcscat", "_tcscat", \
                              "_mbscat", "StrCat", "StrCatA", "StrCatW", "lstrcat", \
-							 "lstrcatA", "lstrcatW", "StrCatBuff", "StrCatBuffA", \
-							 "StrCatBuffW", "StrCatChainW", "_tccat", "_mbccat", \
-							 "_ftcscat", "strncat", "wcsncat", "_tcsncat", "_mbsncat",\
+                             "lstrcatA", "lstrcatW", "StrCatBuff", "StrCatBuffA", \
+                             "StrCatBuffW", "StrCatChainW", "_tccat", "_mbccat", \
+                             "_ftcscat", "strncat", "wcsncat", "_tcsncat", "_mbsncat",\
                              "_mbsnbcat", "StrCatN", "StrCatNA", "StrCatNW", "StrNCat", \
-							 "StrNCatA", "StrNCatW", "lstrncat", "lstrcatnA", \
-							 "lstrcatnW", "lstrcatn"]
+                             "StrNCatA", "StrNCatW", "lstrncat", "lstrcatnA", \
+                             "lstrcatnW", "lstrcatn"]
 list_of_banned_functions += ["sprintfW", "sprintfA", "wsprintf", "wsprintfW", \
                              "wsprintfA", "sprintf", "swprintf", "_stprintf", \
                             "wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", \
-							"_vstprintf", "vswprintf"]
+                            "_vstprintf", "vswprintf"]
 list_of_banned_functions += ["wvsprintf", "wvsprintfA", "wvsprintfW", "vsprintf", \
                              "_vstprintf", "vswprintf"]
 list_of_banned_functions += ["_fstrncpy", " _fstrncat", "gets", "_getts", "_gettws"]
@@ -70,8 +70,8 @@ list_of_not_recommended_functions = ["scanf", "wscanf", "_tscanf", "sscanf", "sw
                                      "_stscanf"]
 list_of_not_recommended_functions += ["wnsprintf", "wnsprintfA", "wnsprintfW", \
                                       "_snwprintf", "snprintf", "sntprintf _vsnprintf", \
-									  "vsnprintf", "_vsnwprintf", "_vsntprintf", \
-									  "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
+                                      "vsnprintf", "_vsnwprintf", "_vsntprintf", \
+                                      "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
 list_of_not_recommended_functions += ["_snwprintf", "_snprintf", "_sntprintf", "nsprintf"]
 list_of_not_recommended_functions += ["_vsnprintf", "_vsnwprintf", "_vsntprintf", \
                                       "wvnsprintf", "wvnsprintfA", "wvnsprintfW"]
@@ -81,10 +81,10 @@ list_of_not_recommended_functions += ["_splitpath", "_tsplitpath", "_wsplitpath"
 list_of_not_recommended_functions += ["snscanf", "snwscanf", "_sntscanf"]
 list_of_not_recommended_functions += ["_itoa", "_itow", "_i64toa", "_i64tow", \
                                       "_ui64toa", "_ui64tot", "_ui64tow", "_ultoa", \
-									  "_ultot", "_ultow"]
+                                      "_ultot", "_ultow"]
 list_of_not_recommended_functions += ["CharToOem", "CharToOemA", "CharToOemW", \
                                       "OemToChar", "OemToCharA", "OemToCharW", \
-									  "CharToOemBuffA", "CharToOemBuffW"]
+                                      "CharToOemBuffA", "CharToOemBuffW"]
 list_of_not_recommended_functions += ["alloca", "_alloca"]
 list_of_not_recommended_functions += ["strlen", "wcslen", "_mbslen", "_mbstrlen", \
                                       "StrLen", "lstrlen"]
@@ -110,13 +110,13 @@ assign_instructions_general = ["mov", "cmov", "xchg", "bswap", "xadd", "ad", "su
                        "sbb", "imul", "mul", "idiv", "div", "inc", "dec", "neg",
                        "da", "aa", "and", "or", "xor", "not", "sar", "shr", "sal",
                        "shl", "shrd", "shld", "ror", "rol", "rcr", "rcl", "lod", "sto",\
-					   "lea"]
+                       "lea"]
 assign_instructions_fp = ["fld", "fst", "fild", "fisp", "fistp", "fbld", "fbstp", "fxch",
                           "fcmove", "fadd", "fiadd", "fsub", "fisub", "fmul", "fimul", \
-						  "fdiv", "fidiv", "fprem", "fabs", "fchs", "frndint", "fscale",\
-						  "fsqrt", "fxtract", "fsin", "fcos", "fsincos", "fptan", \
-						  "fpatan", "f2xm", "fyl2x", "fld", "fstcw", "fnstcw", "fldcw", \
-						  "fstenv", "fnstenv", "fstsw", "fnstsw", "fxsave", "fxrstop"]
+                          "fdiv", "fidiv", "fprem", "fabs", "fchs", "frndint", "fscale",\
+                          "fsqrt", "fxtract", "fsin", "fcos", "fsincos", "fptan", \
+                          "fpatan", "f2xm", "fyl2x", "fld", "fstcw", "fnstcw", "fldcw", \
+                          "fstenv", "fnstenv", "fstsw", "fnstsw", "fxsave", "fxrstop"]
 compare_instructions = ["cmp", "test"]
 registers = ["eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp"]
 stack_push_instructions = ["push"]
@@ -150,11 +150,11 @@ def GetInstructionType(instr_addr):
 
 def is_dangerous(name):
     global list_of_banned_functions, list_of_not_recommended_functions, \
-	       list_of_io_handling_functions
+           list_of_io_handling_functions
     for banned_function in list_of_banned_functions:
         if banned_function in name:
             return True
-        elif ("_" + banned_function) in name: 
+        elif ("_" + banned_function) in name:
             return True
     for not_recommended_func in list_of_not_recommended_functions:
         if not_recommended_func in name:
@@ -165,8 +165,8 @@ def is_dangerous(name):
         if io_handling_function in name:
             return True
         elif ("_" + io_handling_function) in name:
-            return True  
-    
+            return True
+
     return False
 def enumerate_function_chunks(f_start):
     """
@@ -186,7 +186,7 @@ def enumerate_function_chunks(f_start):
     return chunks
 
 def get_call_name(head):
-    instruction_type = GetInstructionType(head)   
+    instruction_type = GetInstructionType(head)
     if instruction_type == CALL_INSTRUCTION:
         opnd = idc.GetOpnd(head, 0)
         if opnd not in registers:
@@ -237,7 +237,7 @@ def enumerate_function_names():
             addr = function_ea - image_base
             addr = str(hex(addr))
             addr = addr.replace("L", "")
-            addr = addr.replace("0x", "")            
+            addr = addr.replace("0x", "")
             func_name[function_name] = get_list_of_function_instr(function_ea)
             function_ea = idc.NextFunction(function_ea)
     return func_name
@@ -276,7 +276,7 @@ def search_in_depth(func_names, list_of_callees, depth_level):
                 sublist_of_instr.append(instr)
             for func_name in result[1]:
                 sublist_of_func_names.append(func_name)
-    return sublist_of_instr, sublist_of_func_names 
+    return sublist_of_instr, sublist_of_func_names
 
 def search_dangerous_functions():
     global DEPTH_LEVEL
@@ -296,20 +296,20 @@ def search_dangerous_functions():
             lists_of_instrs.append(list_of_instr)
             #search callers
             sublists_of_instrs, sublist_of_func_names = search_callers(func_names,\
-			                                                           function_name, \
-																	   DEPTH_LEVEL)
+                                                                       function_name, \
+                                                                       DEPTH_LEVEL)
             for sublist_of_instrs in sublists_of_instrs:
                 lists_of_instrs.append(sublist_of_instrs)
             for sub_func_name in sublist_of_func_names:
                 list_of_func_names.append(sub_func_name)
             #search in depth
             sublists_of_instrs, sublist_of_func_names = search_in_depth(func_names, \
-			                                                            list_of_calls, \
-																		DEPTH_LEVEL)
+                                                                        list_of_calls, \
+                                                                        DEPTH_LEVEL)
             for sublist_of_instrs in sublists_of_instrs:
                 lists_of_instrs.append(sublist_of_instrs)
             for sub_func_name in sublist_of_func_names:
-                list_of_func_names.append(sub_func_name)                
+                list_of_func_names.append(sub_func_name)
     return lists_of_instrs,list_of_func_names
 
 def get_unique(lists_of_instr):
@@ -334,7 +334,7 @@ def save_results(lists_of_instr, list_of_func_names):
     current_time = strftime("%Y-%m-%d_%H-%M-%S")
     file_name = WINHE_RESULTS_DIR + "\\" + one_file
     file_log = WINHE_RESULTS_DIR + "\\" + analyzed_file + "_" + current_time + ".txt"
-    
+
     file = open(file_name, 'a')
     log = open(file_log, 'w')
     analyzed_file = analyzed_file.lower()
@@ -366,11 +366,11 @@ def main():
     else:
         DEPTH_LEVEL = int(DEPTH_LEVEL)
         auto_mode = 1
-	# set WINHE_RESULTS_DIR variable in the cmd in case if you want to run IDA in the 
-	# silent mode.
+    # set WINHE_RESULTS_DIR variable in the cmd in case if you want to run IDA in the
+    # silent mode.
     WINHE_RESULTS_DIR = os.getenv('WINHE_RESULTS_DIR')
     if WINHE_RESULTS_DIR == None:
-        WINHE_RESULTS_DIR = os.getcwd()  
+        WINHE_RESULTS_DIR = os.getcwd()
     print "saving results in ", WINHE_RESULTS_DIR
     print "depth level = ", DEPTH_LEVEL
     init_analysis()
