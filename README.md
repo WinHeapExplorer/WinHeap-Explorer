@@ -8,7 +8,7 @@ WinHeap Explorer main module
 IDAScripts
  1. IDA disassembler (6.8 or higher) + IDAPython.
  
-#Usage
+# Usage
 
 <pre>
 pin.exe -t winhe.dll -o results.txt -d sysdlls_ins_list -redzones_size 16 -- calc.exe
